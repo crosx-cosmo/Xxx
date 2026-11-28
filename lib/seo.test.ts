@@ -124,6 +124,23 @@ test('SEO JSON-LD builders emit valid structured data with Hey Lady 18+ metadata
     comments: [],
     isFollowingCreator: false,
     relatedVideos: [],
+    ratingSummary: {
+      averageRating: 4.8,
+      totalRatings: 16,
+      distribution: { 1: 0, 2: 0, 3: 1, 4: 2, 5: 13 },
+      viewerRating: 5,
+      viewerFeedback: 'Breathtaking 4K quality.',
+      isAuthenticated: true,
+      recentReviews: [
+        {
+          userId: 'usr-reviewer-1',
+          authorName: 'VIP Critic',
+          rating: 5,
+          feedback: 'Breathtaking 4K quality.',
+          updatedAt: '2026-02-02T12:00:00.000Z',
+        },
+      ],
+    },
   };
 
   const videoLd = buildVideoObjectJsonLd(detailVideo, 'https://heylady.test');
@@ -136,6 +153,11 @@ test('SEO JSON-LD builders emit valid structured data with Hey Lady 18+ metadata
   assert.equal(videoLd.hasPart?.[0]['@type'], 'Clip');
   assert.equal(videoLd.hasPart?.[0].startOffset, 0);
   assert.equal(videoLd.hasPart?.[0].endOffset, 300);
+  assert.equal(videoLd.aggregateRating?.['@type'], 'AggregateRating');
+  assert.equal(videoLd.aggregateRating?.ratingValue, 4.8);
+  assert.equal(videoLd.aggregateRating?.ratingCount, 16);
+  assert.equal(videoLd.review?.length, 1);
+  assert.equal(videoLd.review?.[0].reviewRating.ratingValue, 5);
 
   const creatorLd = buildCreatorJsonLd(creator, [sampleVideo], 'https://heylady.test');
   assert.equal(creatorLd['@type'], 'ProfilePage');

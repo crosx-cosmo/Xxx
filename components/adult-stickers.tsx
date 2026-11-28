@@ -250,12 +250,12 @@ export function AdultNeonWatermarkSeal({
   return (
     <motion.div
       data-testid="adult-neon-watermark-seal"
-      initial={{ rotate: -8, scale: 0.96 }}
-      animate={{ rotate: [-8, -5, -8], scale: [0.98, 1.02, 0.98] }}
-      transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
-      whileHover={{ scale: 1.1, rotate: 0 }}
+      initial={false}
+      animate={{ rotate: -6, scale: 1 }}
+      whileHover={{ scale: 1.08, rotate: 0 }}
+      transition={{ type: 'spring', stiffness: 360, damping: 22 }}
       className={cn(
-        'inline-flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-rose-500/60 bg-gradient-to-br from-rose-950/90 via-[#150810]/95 to-amber-950/85 px-3.5 py-2 text-center shadow-[0_0_1.75rem_rgba(225,29,72,0.38)] select-none',
+        'inline-flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-rose-500/60 bg-gradient-to-br from-rose-950/95 via-[#150810]/95 to-amber-950/90 px-3.5 py-2 text-center shadow-[0_0_1.5rem_rgba(225,29,72,0.34)] select-none',
         className
       )}
     >
@@ -311,12 +311,12 @@ function FloatingStickerOrbNode({
 
   const toneBorderClass =
     spec.tone === 'crimson'
-      ? 'border-rose-500/45 bg-gradient-to-br from-rose-950/75 via-[#180710]/80 to-rose-900/70 text-rose-100 shadow-[0_0_1.35rem_rgba(225,29,72,0.25)]'
+      ? 'border-rose-500/45 bg-gradient-to-br from-rose-950/92 via-[#180710]/95 to-rose-900/90 text-rose-100 shadow-[0_0_1.15rem_rgba(225,29,72,0.22)]'
       : spec.tone === 'amber'
-        ? 'border-amber-400/45 bg-gradient-to-br from-amber-950/75 via-[#1B1208]/80 to-amber-900/70 text-amber-100 shadow-[0_0_1.35rem_rgba(245,158,11,0.22)]'
+        ? 'border-amber-400/45 bg-gradient-to-br from-amber-950/92 via-[#1B1208]/95 to-amber-900/90 text-amber-100 shadow-[0_0_1.15rem_rgba(245,158,11,0.2)]'
         : spec.tone === 'rose-gold'
-          ? 'border-rose-400/50 bg-gradient-to-br from-rose-950/75 via-amber-950/75 to-rose-900/75 text-amber-100 shadow-[0_0_1.45rem_rgba(244,63,94,0.26)]'
-          : 'border-white/20 bg-zinc-950/75 text-zinc-100 shadow-[0_0_1.1rem_rgba(0,0,0,0.35)]';
+          ? 'border-rose-400/50 bg-gradient-to-br from-rose-950/92 via-amber-950/92 to-rose-900/90 text-amber-100 shadow-[0_0_1.2rem_rgba(244,63,94,0.24)]'
+          : 'border-white/20 bg-zinc-950/92 text-zinc-100 shadow-[0_0_1rem_rgba(0,0,0,0.35)]';
 
   return (
     <motion.div
@@ -330,7 +330,7 @@ function FloatingStickerOrbNode({
         rotate,
       }}
       className={cn(
-        'fixed -translate-x-1/2 -translate-y-1/2 pointer-events-auto z-20 select-none',
+        'fixed -translate-x-1/2 -translate-y-1/2 pointer-events-auto z-20 select-none will-change-transform',
         tierVisibilityClass
       )}
     >
@@ -339,35 +339,25 @@ function FloatingStickerOrbNode({
         aria-label={`${node.symbol} ${node.caption} interactive adult sticker`}
         onClick={() => setBoosted((prev) => !prev)}
         animate={{
-          y: [0, -5, 0],
           scale: boosted ? 1.12 : 1,
         }}
         transition={{
-          y: {
-            duration: node.floatDurationSec,
-            delay: node.floatDelaySec,
-            repeat: Infinity,
-            ease: 'easeInOut',
-          },
-          scale: {
-            type: 'spring',
-            stiffness: 420,
-            damping: 18,
-          },
+          type: 'spring',
+          stiffness: 420,
+          damping: 20,
         }}
         whileHover={{
-          scale: 1.18,
+          scale: 1.16,
           rotate: 0,
-          opacity: 1,
         }}
         whileTap={{
-          scale: 0.88,
+          scale: 0.9,
         }}
         className={cn(
-          'group relative inline-flex items-center gap-1.5 rounded-xl border px-2 py-1 text-[0.625rem] backdrop-blur-md opacity-65 hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-200 cursor-pointer',
+          'group relative inline-flex items-center gap-1.5 rounded-xl border px-2 py-1 text-[0.625rem] opacity-65 hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-200 cursor-pointer',
           toneBorderClass,
           boosted &&
-            'opacity-100 ring-2 ring-rose-500/70 shadow-[0_0_1.75rem_rgba(225,29,72,0.5)]'
+            'opacity-100 ring-2 ring-rose-500/70 shadow-[0_0_1.5rem_rgba(225,29,72,0.45)]'
         )}
       >
         <span

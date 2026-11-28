@@ -26,25 +26,25 @@ const ORB_CONFIG: Record<
 > = {
   compact: {
     pxSize: 36,
-    particleCount: 160,
+    particleCount: 28,
     speed: 1.05,
     frameClass: 'h-[2.25rem] w-[2.25rem] rounded-full',
   },
   header: {
     pxSize: 44,
-    particleCount: 210,
+    particleCount: 38,
     speed: 1.1,
     frameClass: 'h-[2.75rem] w-[2.75rem] rounded-full',
   },
   modal: {
     pxSize: 56,
-    particleCount: 270,
+    particleCount: 48,
     speed: 1.0,
     frameClass: 'h-[3.5rem] w-[3.5rem] rounded-full',
   },
   hero: {
     pxSize: 156,
-    particleCount: 820,
+    particleCount: 92,
     speed: 0.92,
     frameClass:
       'h-[clamp(7rem,11.5vw,9.75rem)] w-[clamp(7rem,11.5vw,9.75rem)] rounded-full',
@@ -110,6 +110,7 @@ export function ParticleOrbCrest({
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const hoveredRef = React.useRef(false);
   const impulseRef = React.useRef(0);
+  const wakeLoopRef = React.useRef<(() => void) | null>(null);
 
   React.useEffect(() => {
     const canvas = canvasRef.current;
@@ -130,18 +131,21 @@ export function ParticleOrbCrest({
 
     let artworkImg: HTMLImageElement | null = null;
     let artworkLoaded = false;
+    let rafId = 0;
+    let isRunning = false;
+    let activeUntil = performance.now() + 2600;
+    let angleY = 0.65;
+    let elapsed = 0;
+    let lastTimestamp = performance.now();
+
     const img = new window.Image();
     img.crossOrigin = 'anonymous';
     img.src = COVERED_EMBLEM_ASSET_SRC;
     img.onload = () => {
       artworkImg = img;
       artworkLoaded = true;
+      drawFrame();
     };
-
-    let rafId = 0;
-    let angleY = 0.65;
-    let elapsed = 0;
-    let lastTimestamp = performance.now();
 
     const drawFrame = () => {
       ctx.clearRect(0, 0, size, size);
@@ -474,11 +478,36 @@ export function ParticleOrbCrest({
         drawFrame();
       }
       lastTimestamp = now;
-      rafId = window.requestAnimationFrame(step);
+
+      const shouldContinue =
+        hoveredRef.current ||
+        impulseRef.current > 0.005 ||
+        now < activeUntil;
+
+      if (shouldContinue && isVisible && !document.hidden) {
+        rafId = window.requestAnimationFrame(step);
+      } else {
+        isRunning = false;
+      }
     };
 
+    const wakeLoop = () => {
+      if (reducedMotion) return;
+      activeUntil = performance.now() + 2400;
+      if (!isRunning) {
+        isRunning = true;
+        lastTimestamp = performance.now();
+        rafId = window.requestAnimationFrame(step);
+      }
+    };
+
+    wakeLoopRef.current = wakeLoop;
+    isRunning = true;
     rafId = window.requestAnimationFrame(step);
+
     return () => {
+      isRunning = false;
+      wakeLoopRef.current = null;
       window.cancelAnimationFrame(rafId);
       observer?.disconnect();
     };
@@ -486,6 +515,7 @@ export function ParticleOrbCrest({
 
   const triggerJiggleImpulse = () => {
     impulseRef.current = 1.65;
+    wakeLoopRef.current?.();
   };
 
   return (

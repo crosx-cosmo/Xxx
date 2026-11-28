@@ -235,6 +235,39 @@ export function buildVideoObjectJsonLd(
     };
   });
 
+  const ratingSummary =
+    'ratingSummary' in video && video.ratingSummary
+      ? video.ratingSummary
+      : undefined;
+
+  const hasValidAggregateRating =
+    Boolean(ratingSummary) &&
+    Number(ratingSummary?.totalRatings) > 0 &&
+    Number(ratingSummary?.averageRating) >= 1 &&
+    Number(ratingSummary?.averageRating) <= 5;
+
+  const reviews =
+    hasValidAggregateRating && Array.isArray(ratingSummary?.recentReviews)
+      ? ratingSummary.recentReviews
+          .filter((item) => item.feedback && item.feedback.trim().length > 0)
+          .slice(0, 3)
+          .map((item) => ({
+            '@type': 'Review',
+            author: {
+              '@type': 'Person',
+              name: item.authorName || 'Verified Member',
+            },
+            datePublished: item.updatedAt,
+            reviewBody: item.feedback,
+            reviewRating: {
+              '@type': 'Rating',
+              ratingValue: item.rating,
+              bestRating: 5,
+              worstRating: 1,
+            },
+          }))
+      : [];
+
   return {
     '@context': 'https://schema.org',
     '@type': 'VideoObject',
@@ -264,6 +297,18 @@ export function buildVideoObjectJsonLd(
       },
     },
     ...(clips.length > 0 ? { hasPart: clips } : {}),
+    ...(hasValidAggregateRating && ratingSummary
+      ? {
+          aggregateRating: {
+            '@type': 'AggregateRating',
+            ratingValue: Number(ratingSummary.averageRating.toFixed(1)),
+            ratingCount: ratingSummary.totalRatings,
+            bestRating: 5,
+            worstRating: 1,
+          },
+        }
+      : {}),
+    ...(reviews.length > 0 ? { review: reviews } : {}),
     interactionStatistic: [
       {
         '@type': 'InteractionCounter',

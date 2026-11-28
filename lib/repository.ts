@@ -42,6 +42,16 @@ import {
   type VideoReactionState,
   type VideoReactionType,
 } from './video-reactions';
+import {
+  createEmptyRatingDistribution,
+  createEmptyVideoRatingSummary,
+  isValidStarRating,
+  normalizeVideoRatingSummary,
+  sanitizeRatingFeedback,
+  type VideoRatingReviewItem,
+  type VideoRatingStar,
+  type VideoRatingSummary,
+} from './video-ratings';
 
 interface RawUserRow {
   id: string;
@@ -1004,6 +1014,162 @@ export async function toggleVideoReaction(
       reactionType,
       active,
       ...updatedState,
+    };
+  });
+}
+
+/**
+ * Fetches 5-star rating distribution, average rating, viewer rating, and recent feedback for a video.
+ */
+export async function getVideoRatingSummary(
+  videoId: string,
+  viewerIdOverride?: string | null
+): Promise<VideoRatingSummary> {
+  const viewerId =
+    viewerIdOverride !== undefined
+      ? viewerIdOverride
+      : await getOptionalViewerId();
+
+  const emptySummary = createEmptyVideoRatingSummary(Boolean(viewerId));
+  if (!isNeonConfigured()) {
+    return emptySummary;
+  }
+
+  return withOptionalNeonRead<VideoRatingSummary>(emptySummary, async () => {
+    const sql = getNeonSql();
+    const [distRows, viewerRows, reviewRows] = await Promise.all([
+      sql`
+        SELECT rating::int AS rating, COUNT(*)::int AS count
+        FROM video_ratings
+        WHERE video_id = ${videoId}
+        GROUP BY rating
+      `,
+      viewerId
+        ? sql`
+            SELECT rating::int AS rating, COALESCE(feedback, '') AS feedback
+            FROM video_ratings
+            WHERE video_id = ${videoId} AND user_id = ${viewerId}
+            LIMIT 1
+          `
+        : Promise.resolve([]),
+      sql`
+        SELECT
+          vr.user_id,
+          vr.rating::int AS rating,
+          COALESCE(vr.feedback, '') AS feedback,
+          vr.updated_at,
+          COALESCE(NULLIF(TRIM(u.name), ''), 'Verified Member') AS author_name
+        FROM video_ratings vr
+        JOIN users u ON u.id = vr.user_id
+        WHERE vr.video_id = ${videoId}
+          AND char_length(trim(vr.feedback)) > 0
+        ORDER BY vr.updated_at DESC
+        LIMIT 6
+      `,
+    ]);
+
+    const distribution = createEmptyRatingDistribution();
+    for (const row of distRows as unknown as Array<{
+      rating: number;
+      count: number;
+    }>) {
+      const r = Number(row.rating);
+      if (isValidStarRating(r)) {
+        distribution[r] = Number(row.count ?? 0);
+      }
+    }
+
+    const viewerRow = (
+      viewerRows as unknown as Array<{ rating: number; feedback: string }>
+    )[0];
+    const viewerRating =
+      viewerRow && isValidStarRating(Number(viewerRow.rating))
+        ? (Number(viewerRow.rating) as VideoRatingStar)
+        : null;
+    const viewerFeedback = viewerRow
+      ? sanitizeRatingFeedback(viewerRow.feedback)
+      : '';
+
+    const recentReviews: VideoRatingReviewItem[] = (
+      reviewRows as unknown as Array<{
+        user_id: string;
+        rating: number;
+        feedback: string;
+        updated_at: string | Date;
+        author_name: string;
+      }>
+    )
+      .filter((item) => isValidStarRating(Number(item.rating)))
+      .map((item) => ({
+        userId: item.user_id,
+        authorName: item.author_name || 'Verified Member',
+        rating: Number(item.rating) as VideoRatingStar,
+        feedback: sanitizeRatingFeedback(item.feedback),
+        updatedAt: toIso(item.updated_at),
+      }));
+
+    return normalizeVideoRatingSummary({
+      distribution,
+      viewerRating,
+      viewerFeedback,
+      isAuthenticated: true,
+      recentReviews,
+    });
+  });
+}
+
+/**
+ * Atomic PostgreSQL upsert for an authenticated viewer's 1-5 star rating and feedback.
+ */
+export async function submitVideoRating(params: {
+  videoId: string;
+  viewerId: string;
+  rating: VideoRatingStar;
+  feedback?: string;
+  authorName?: string;
+}): Promise<(VideoRatingSummary & { videoId: string }) | null> {
+  const { videoId, viewerId, rating } = params;
+  if (!isValidStarRating(rating)) {
+    return null;
+  }
+  const cleanFeedback = sanitizeRatingFeedback(params.feedback ?? '');
+  const cleanAuthorName = (params.authorName ?? '').trim().slice(0, 48);
+
+  return withNeonSchemaRecovery(async () => {
+    await ensureViewerRowInDb(viewerId);
+    const sql = getNeonSql();
+
+    const vidRows = (await sql`
+      SELECT id FROM videos WHERE id = ${videoId} LIMIT 1
+    `) as unknown as Array<{ id: string }>;
+    if (vidRows.length === 0) {
+      return null;
+    }
+
+    if (cleanAuthorName.length >= 2) {
+      await sql`
+        UPDATE users
+        SET name = ${cleanAuthorName}
+        WHERE id = ${viewerId} AND is_admin = FALSE AND is_educator = FALSE
+      `;
+    }
+
+    await sql`
+      INSERT INTO video_ratings (user_id, video_id, rating, feedback, updated_at)
+      VALUES (${viewerId}, ${videoId}, ${rating}, ${cleanFeedback}, NOW())
+      ON CONFLICT (user_id, video_id)
+      DO UPDATE SET
+        rating = EXCLUDED.rating,
+        feedback = EXCLUDED.feedback,
+        updated_at = NOW()
+    `;
+
+    invalidateCatalogCaches(videoId);
+    const summary = await getVideoRatingSummary(videoId, viewerId);
+
+    return {
+      videoId,
+      ...summary,
     };
   });
 }

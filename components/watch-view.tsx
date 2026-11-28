@@ -34,6 +34,7 @@ import { ReflectionCard } from '@/components/reflection-card';
 import { DiscussionSection } from '@/components/discussion-section';
 import { ShareModal } from '@/components/share-modal';
 import { VideoReactionBar } from '@/components/video-reaction-bar';
+import { VideoRatingCard } from '@/components/video-rating-card';
 import { EducatorAvatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { TransitionLink } from '@/components/transition-link';
@@ -379,6 +380,13 @@ export function WatchView({ video }: WatchViewProps) {
           <VideoReactionBar
             videoId={video.id}
             initialReactions={video.reactions}
+            className="mt-4"
+          />
+
+          {/* Interactive 5-Star Rating & Authenticated Member Feedback System */}
+          <VideoRatingCard
+            videoId={video.id}
+            initialRatingSummary={video.ratingSummary}
             className="mt-4"
           />
 

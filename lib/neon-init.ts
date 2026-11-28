@@ -180,6 +180,16 @@ async function runSchemaBootstrap(force = false): Promise<void> {
       )
     `,
     sql`
+      CREATE TABLE IF NOT EXISTS video_ratings (
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        video_id TEXT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+        rating SMALLINT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+        feedback TEXT NOT NULL DEFAULT '',
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (user_id, video_id)
+      )
+    `,
+    sql`
       CREATE TABLE IF NOT EXISTS watch_history (
         user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         video_id TEXT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
@@ -221,6 +231,7 @@ async function runSchemaBootstrap(force = false): Promise<void> {
     sql`CREATE INDEX IF NOT EXISTS idx_bookmarks_user_created ON bookmarks (user_id, created_at DESC)`,
     sql`CREATE INDEX IF NOT EXISTS idx_video_likes_video ON video_likes (video_id)`,
     sql`CREATE INDEX IF NOT EXISTS idx_video_reactions_video_type ON video_reactions (video_id, reaction_type)`,
+    sql`CREATE INDEX IF NOT EXISTS idx_video_ratings_video_rating ON video_ratings (video_id, rating)`,
     sql`CREATE INDEX IF NOT EXISTS idx_creator_follows_creator ON creator_follows (creator_id)`,
     sql`CREATE INDEX IF NOT EXISTS idx_watch_history_user_recent ON watch_history (user_id, watched_at DESC)`,
     sql`CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id ON auth_sessions (user_id)`,

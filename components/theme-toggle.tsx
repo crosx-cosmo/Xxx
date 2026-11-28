@@ -31,8 +31,15 @@ export function ThemeToggle({ className }: { className?: string }) {
   const rotateX = useTransform(springY, [-0.5, 0.5], [8, -8]);
   const rotateY = useTransform(springX, [-0.5, 0.5], [-10, 10]);
 
+  const cachedRectRef = React.useRef<DOMRect | null>(null);
+
+  const handlePointerEnter = (e: React.PointerEvent<HTMLButtonElement>) => {
+    cachedRectRef.current = e.currentTarget.getBoundingClientRect();
+  };
+
   const handlePointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
+    const rect =
+      cachedRectRef.current ?? e.currentTarget.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return;
     const nx = (e.clientX - rect.left) / rect.width - 0.5;
     const ny = (e.clientY - rect.top) / rect.height - 0.5;
@@ -41,6 +48,7 @@ export function ThemeToggle({ className }: { className?: string }) {
   };
 
   const handlePointerLeave = () => {
+    cachedRectRef.current = null;
     pointerX.set(0);
     pointerY.set(0);
   };
@@ -64,6 +72,7 @@ export function ThemeToggle({ className }: { className?: string }) {
       data-testid="theme-toggle"
       data-theme-state={isDark ? 'dark' : 'light'}
       onClick={handleClick}
+      onPointerEnter={handlePointerEnter}
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
       whileHover={{ scale: 1.035 }}
@@ -93,42 +102,24 @@ export function ThemeToggle({ className }: { className?: string }) {
         )}
       />
 
-      {/* Diamond Starlight Facets (Dark Velvet Mode) */}
-      <AnimatePresence initial={false}>
-        {isDark && (
-          <motion.span
-            key="prism-facets"
-            aria-hidden="true"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="pointer-events-none absolute inset-0"
-          >
-            {PRISM_FACETS.map((facet) => (
-              <motion.span
-                key={facet.id}
-                animate={{
-                  opacity: [0.3, 1, 0.3],
-                  scale: [0.75, 1.2, 0.75],
-                  rotate: [45, 135, 45],
-                }}
-                transition={{
-                  duration: 2.6,
-                  delay: facet.delay,
-                  repeat: Infinity,
-                  ease: 'easeInOut',
-                }}
-                style={{
-                  top: facet.top,
-                  left: facet.left,
-                }}
-                className="absolute h-1 w-1 rotate-45 bg-amber-300 shadow-[0_0_0.4rem_rgba(251,191,36,0.95)]"
-              />
-            ))}
-          </motion.span>
-        )}
-      </AnimatePresence>
+      {/* Diamond Starlight Facets (Dark Velvet Mode - zero JS loop overhead) */}
+      {isDark && (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+        >
+          {PRISM_FACETS.map((facet) => (
+            <span
+              key={facet.id}
+              style={{
+                top: facet.top,
+                left: facet.left,
+              }}
+              className="absolute h-1 w-1 rotate-45 bg-amber-300 opacity-75 group-hover:opacity-100 group-hover:scale-125 transition-all duration-300 shadow-[0_0_0.4rem_rgba(251,191,36,0.95)]"
+            />
+          ))}
+        </span>
+      )}
 
       {/* Editorial Mode Readout opposite the Faceted Eclipse Jewel */}
       <div
@@ -142,10 +133,10 @@ export function ThemeToggle({ className }: { className?: string }) {
           {isDark ? (
             <motion.span
               key="mode-velvet"
-              initial={{ opacity: 0, y: 5, filter: 'blur(2px)' }}
-              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, y: -5, filter: 'blur(2px)' }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
               className="inline-flex items-center gap-1 whitespace-nowrap shrink-0"
             >
               <span className="inline-block h-1.5 w-1.5 rotate-45 bg-rose-400 shadow-[0_0_6px_rgba(244,63,94,0.9)]" />
@@ -154,10 +145,10 @@ export function ThemeToggle({ className }: { className?: string }) {
           ) : (
             <motion.span
               key="mode-solar"
-              initial={{ opacity: 0, y: -5, filter: 'blur(2px)' }}
-              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, y: 5, filter: 'blur(2px)' }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
               className="inline-flex items-center gap-0.5 whitespace-nowrap shrink-0"
             >
               <span>LIGHT</span>
